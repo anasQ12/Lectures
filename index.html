@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل المحاضرات</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <h1>سجل المحاضرات</h1>
+        <p>عرض مباشر لعدد مرات إلقاء كل محاضرة والحضور المسجل</p>
+      </div>
+      <a class="btn" href="admin.html">دخول الإدارة</a>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="topic-filter">الموضوع</label>
+        <select id="topic-filter">
+          <option value="">كل المواضيع</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="date-from">من تاريخ</label>
+        <input type="date" id="date-from">
+      </div>
+      <div class="field">
+        <label for="date-to">إلى تاريخ</label>
+        <input type="date" id="date-to">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="btn btn-ghost" id="clear-filters">مسح الفلاتر</button>
+      </div>
+    </div>
+
+    <div id="topics-container" class="topics">
+      <div class="empty-state">جارٍ التحميل...</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="assets/supabase-config.js"></script>
+  <script>
+    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY);
+
+    let allTopics = []; // { id, name, sessions: [{ id, date, instructor, attendees: [{id,name}] }] }
+
+    const topicFilterEl = document.getElementById('topic-filter');
+    const dateFromEl = document.getElementById('date-from');
+    const dateToEl = document.getElementById('date-to');
+    const container = document.getElementById('topics-container');
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s ?? '';
+      return d.innerHTML;
+    }
+
+    async function loadData() {
+      const { data, error } = await client
+        .from('topics')
+        .select('id, name, lecture_sessions(id, date, instructor, attendees(id, name))')
+        .order('name', { ascending: true });
+
+      if (error) {
+        container.innerHTML = `<div class="empty-state">تعذّر تحميل البيانات<br><span style="font-size:12px">${esc(error.message)}</span></div>`;
+        return;
+      }
+
+      allTopics = (data || []).map(t => ({
+        id: t.id,
+        name: t.name,
+        sessions: (t.lecture_sessions || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+      }));
+
+      populateTopicFilter();
+      render();
+    }
+
+    function populateTopicFilter() {
+      const current = topicFilterEl.value;
+      topicFilterEl.innerHTML = '<option value="">كل المواضيع</option>' +
+        allTopics.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+      topicFilterEl.value = current;
+    }
+
+    function render() {
+      const topicId = topicFilterEl.value;
+      const from = dateFromEl.value;
+      const to = dateToEl.value;
+
+      const filtered = allTopics
+        .filter(t => !topicId || t.id === topicId)
+        .map(t => {
+          const sessions = t.sessions.filter(s => {
+            if (from && s.date < from) return false;
+            if (to && s.date > to) return false;
+            return true;
+          });
+          return { ...t, sessions };
+        })
+        .filter(t => (!from && !to) || t.sessions.length > 0);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="big">📋</div>لا توجد محاضرات مطابقة</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const count = t.sessions.length;
+        const lastDate = t.sessions[0]?.date;
+        return `
+        <div class="topic-card" data-topic="${t.id}">
+          <div class="topic-head" onclick="this.parentElement.classList.toggle('open')">
+            <div class="seal"><span class="seal-count nums">${count}</span></div>
+            <div class="topic-meta">
+              <h3>${esc(t.name)}</h3>
+              <div class="sub">${lastDate ? 'آخر محاضرة: ' + esc(lastDate) : 'لم تُلقَ بعد'}</div>
+            </div>
+            <div class="chev">▾</div>
+          </div>
+          <div class="topic-body">
+            ${t.sessions.length === 0 ? '<div class="attendee-empty">لا توجد محاضرات ضمن الفلترة الحالية</div>' :
+              t.sessions.map(s => `
+              <div class="session-row">
+                <div class="session-head" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="session-info">
+                    <div class="session-date nums">${esc(s.date)}</div>
+                    <div class="session-instructor">المحاضر: ${esc(s.instructor)}</div>
+                  </div>
+                  <div class="session-count">${(s.attendees || []).length} حاضر</div>
+                </div>
+                <div class="attendee-list">
+                  ${(s.attendees || []).length === 0
+                    ? '<div class="attendee-empty">لا يوجد حضور مسجل</div>'
+                    : `<div class="attendee-chips">${(s.attendees || []).map(a => `<span class="chip">${esc(a.name)}</span>`).join('')}</div>`}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    topicFilterEl.addEventListener('change', render);
+    dateFromEl.addEventListener('change', render);
+    dateToEl.addEventListener('change', render);
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      topicFilterEl.value = '';
+      dateFromEl.value = '';
+      dateToEl.value = '';
+      render();
+    });
+
+    // Live updates: refetch whenever underlying tables change
+    client.channel('public-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'topics' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lecture_sessions' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendees' }, loadData)
+      .subscribe();
+
+    loadData();
+  </script>
+</body>
+</html>

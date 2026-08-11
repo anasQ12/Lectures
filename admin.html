@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة سجل المحاضرات</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+  <!-- ===== Auth screen ===== -->
+  <div id="auth-screen" class="auth-shell">
+    <div class="auth-card">
+      <div id="auth-alert-slot"></div>
+
+      <div id="login-view">
+        <h2>تسجيل الدخول</h2>
+        <div class="sub">دخول المشرفين فقط</div>
+        <div class="field">
+          <label for="login-username">اسم المستخدم</label>
+          <input type="text" id="login-username" autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="login-password">كلمة المرور</label>
+          <input type="password" id="login-password" autocomplete="current-password">
+        </div>
+        <button class="btn btn-accent" id="login-btn">دخول</button>
+        <div class="auth-switch">
+          <button id="show-setup">الإعداد الأول للنظام (المشرف العام)</button>
+        </div>
+        <div class="auth-switch"><a href="index.html">‹ العودة للعرض العام</a></div>
+      </div>
+
+      <div id="setup-view" style="display:none">
+        <h2>إعداد المشرف العام</h2>
+        <div class="sub">هذا الخيار يعمل مرة واحدة فقط عند عدم وجود أي مشرف في النظام</div>
+        <div class="field">
+          <label for="setup-username">اسم المستخدم</label>
+          <input type="text" id="setup-username">
+        </div>
+        <div class="field">
+          <label for="setup-password">كلمة المرور (٨ أحرف على الأقل)</label>
+          <input type="password" id="setup-password">
+        </div>
+        <button class="btn btn-accent" id="setup-btn">إنشاء حساب المشرف العام</button>
+        <div class="auth-switch">
+          <button id="show-login">لديك حساب بالفعل؟ تسجيل الدخول</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Dashboard ===== -->
+  <div id="dashboard" class="shell" style="display:none">
+    <div class="topbar">
+      <div class="brand">
+        <h1>إدارة سجل المحاضرات</h1>
+        <p>مرحبًا <span id="who"></span> <span class="role-badge" id="role-badge"></span></p>
+      </div>
+      <div class="tag-row">
+        <a class="btn" href="index.html">العرض العام</a>
+        <button class="btn" id="logout-btn">تسجيل الخروج</button>
+      </div>
+    </div>
+
+    <div id="dash-alert-slot"></div>
+
+    <div class="panels">
+
+      <div class="panel">
+        <h3>➕ إضافة موضوع جديد</h3>
+        <div class="panel-sub">أضف موضوع محاضرة جديد ليكون متاحًا عند تسجيل جلسة</div>
+        <div class="form-row">
+          <div class="field">
+            <label for="new-topic-name">اسم الموضوع</label>
+            <input type="text" id="new-topic-name" placeholder="مثال: السلامة في الرصيف">
+          </div>
+          <button class="btn btn-accent" id="add-topic-btn">إضافة الموضوع</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>📅 تسجيل محاضرة جديدة</h3>
+        <div class="panel-sub">سجّل أن موضوعًا معينًا أُلقي في تاريخ محدد</div>
+        <div class="form-row">
+          <div class="field">
+            <label for="session-topic">الموضوع</label>
+            <select id="session-topic"></select>
+          </div>
+          <div class="field">
+            <label for="session-date">التاريخ</label>
+            <input type="date" id="session-date">
+          </div>
+          <div class="field">
+            <label for="session-instructor">اسم المحاضر</label>
+            <input type="text" id="session-instructor" placeholder="اسم من ألقى المحاضرة">
+          </div>
+          <button class="btn btn-accent" id="add-session-btn">تسجيل المحاضرة</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>👥 إضافة حضور</h3>
+        <div class="panel-sub">اختر المحاضرة ثم أضف أسماء الحاضرين (اسم في كل سطر)</div>
+        <div class="form-row">
+          <div class="field" style="flex:1 1 100%">
+            <label for="attendee-session">المحاضرة</label>
+            <select id="attendee-session"></select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label for="attendee-names">الأسماء</label>
+          <textarea id="attendee-names" placeholder="اسم الحاضر الأول&#10;اسم الحاضر الثاني&#10;..."></textarea>
+        </div>
+        <button class="btn btn-accent" id="add-attendees-btn" style="margin-top:10px">إضافة الحضور</button>
+      </div>
+
+      <div class="panel" id="manage-panel">
+        <h3>🗂️ إدارة المواضيع والمحاضرات</h3>
+        <div class="panel-sub">حذف المواضيع أو المحاضرات أو الحضور (للمشرف العام فقط)</div>
+        <div id="manage-content"></div>
+      </div>
+
+      <div class="panel" id="admins-panel">
+        <h3>🔑 إدارة حسابات المشرفين</h3>
+        <div class="panel-sub">إنشاء حسابات مشرفين جدد وإعادة تعيين كلمات المرور (للمشرف العام فقط)</div>
+
+        <div class="section-title">الحسابات الحالية</div>
+        <div class="table-scroll">
+          <table class="list-table" id="admins-table">
+            <thead><tr><th>اسم المستخدم</th><th>الصلاحية</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="section-title">إنشاء حساب جديد</div>
+        <div class="form-row">
+          <div class="field">
+            <label for="new-admin-username">اسم المستخدم</label>
+            <input type="text" id="new-admin-username">
+          </div>
+          <div class="field">
+            <label for="new-admin-password">كلمة المرور الأولية</label>
+            <input type="password" id="new-admin-password">
+          </div>
+          <div class="field">
+            <label for="new-admin-role">الصلاحية</label>
+            <select id="new-admin-role">
+              <option value="admin">مشرف</option>
+              <option value="superadmin">مشرف عام</option>
+            </select>
+          </div>
+          <button class="btn btn-accent" id="create-admin-btn">إنشاء الحساب</button>
+        </div>
+
+        <div class="section-title">إعادة تعيين كلمة مرور</div>
+        <div class="form-row">
+          <div class="field">
+            <label for="reset-username">اسم المستخدم</label>
+            <input type="text" id="reset-username">
+          </div>
+          <div class="field">
+            <label for="reset-password">كلمة المرور الجديدة</label>
+            <input type="password" id="reset-password">
+          </div>
+          <button class="btn" id="reset-password-btn">إعادة التعيين</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>🔒 تغيير كلمة المرور الخاصة بي</h3>
+        <div class="form-row">
+          <div class="field">
+            <label for="self-password">كلمة المرور الجديدة</label>
+            <input type="password" id="self-password">
+          </div>
+          <button class="btn" id="self-password-btn">تحديث كلمة المرور</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="assets/supabase-config.js"></script>
+  <script>
+    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY);
+
+    let currentProfile = null; // { username, role }
+    let allTopics = [];        // raw topics list
+    let allSessions = [];      // raw sessions list (joined with topic name)
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s ?? '';
+      return d.innerHTML;
+    }
+    function usernameToEmail(u) { return `${u.trim().toLowerCase()}@internal.local`; }
+
+    function showAlert(slotId, message, type) {
+      const slot = document.getElementById(slotId);
+      slot.innerHTML = `<div class="alert alert-${type}">${esc(message)}</div>`;
+      setTimeout(() => { if (slot) slot.innerHTML = ''; }, 6000);
+    }
+
+    // ---------- Auth screen switching ----------
+    document.getElementById('show-setup').addEventListener('click', () => {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('setup-view').style.display = 'block';
+    });
+    document.getElementById('show-login').addEventListener('click', () => {
+      document.getElementById('setup-view').style.display = 'none';
+      document.getElementById('login-view').style.display = 'block';
+    });
+
+    // ---------- Bootstrap first superadmin ----------
+    document.getElementById('setup-btn').addEventListener('click', async () => {
+      const username = document.getElementById('setup-username').value.trim();
+      const password = document.getElementById('setup-password').value;
+      if (!username || !password) {
+        showAlert('auth-alert-slot', 'الرجاء تعبئة اسم المستخدم وكلمة المرور', 'error');
+        return;
+      }
+      const btn = document.getElementById('setup-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch(window.EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create_admin', username, password })
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'تعذر الإنشاء');
+        showAlert('auth-alert-slot', 'تم إنشاء حساب المشرف العام، يمكنك تسجيل الدخول الآن', 'success');
+        document.getElementById('setup-view').style.display = 'none';
+        document.getElementById('login-view').style.display = 'block';
+        document.getElementById('login-username').value = username;
+      } catch (e) {
+        showAlert('auth-alert-slot', e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ---------- Login ----------
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!username || !password) {
+        showAlert('auth-alert-slot', 'الرجاء تعبئة اسم المستخدم وكلمة المرور', 'error');
+        return;
+      }
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      const { error } = await client.auth.signInWithPassword({
+        email: usernameToEmail(username),
+        password
+      });
+      btn.disabled = false;
+      if (error) {
+        showAlert('auth-alert-slot', 'اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
+        return;
+      }
+      await afterLogin();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await client.auth.signOut();
+      location.reload();
+    });
+
+    // ---------- Session bootstrap on page load ----------
+    async function init() {
+      const { data: { session } } = await client.auth.getSession();
+      if (session) {
+        await afterLogin();
+      }
+    }
+
+    async function afterLogin() {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+
+      const { data: profile, error } = await client
+        .from('admin_profiles')
+        .select('username, role')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !profile) {
+        showAlert('auth-alert-slot', 'تعذر العثور على ملف تعريف المشرف', 'error');
+        await client.auth.signOut();
+        return;
+      }
+
+      currentProfile = profile;
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('who').textContent = profile.username;
+      document.getElementById('role-badge').textContent = profile.role === 'superadmin' ? 'مشرف عام' : 'مشرف';
+
+      if (profile.role !== 'superadmin') {
+        document.getElementById('manage-panel').style.display = 'none';
+        document.getElementById('admins-panel').style.display = 'none';
+      }
+
+      await loadTopics();
+      await loadSessions();
+      if (profile.role === 'superadmin') {
+        await loadAdmins();
+        renderManagePanel();
+      }
+    }
+
+    // ---------- Data loading ----------
+    async function loadTopics() {
+      const { data } = await client.from('topics').select('id, name').order('name');
+      allTopics = data || [];
+      const topicSelect = document.getElementById('session-topic');
+      topicSelect.innerHTML = allTopics.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    }
+
+    async function loadSessions() {
+      const { data } = await client
+        .from('lecture_sessions')
+        .select('id, date, instructor, topics(name)')
+        .order('date', { ascending: false });
+      allSessions = data || [];
+      const sessionSelect = document.getElementById('attendee-session');
+      sessionSelect.innerHTML = allSessions.map(s =>
+        `<option value="${s.id}">${esc(s.topics?.name || '')} — ${esc(s.date)} (${esc(s.instructor)})</option>`
+      ).join('');
+    }
+
+    // ---------- Add topic ----------
+    document.getElementById('add-topic-btn').addEventListener('click', async () => {
+      const name = document.getElementById('new-topic-name').value.trim();
+      if (!name) return;
+      const { error } = await client.from('topics').insert({ name });
+      if (error) { showAlert('dash-alert-slot', error.message, 'error'); return; }
+      document.getElementById('new-topic-name').value = '';
+      showAlert('dash-alert-slot', 'تمت إضافة الموضوع', 'success');
+      await loadTopics();
+      if (currentProfile.role === 'superadmin') renderManagePanel();
+    });
+
+    // ---------- Add lecture session ----------
+    document.getElementById('add-session-btn').addEventListener('click', async () => {
+      const topic_id = document.getElementById('session-topic').value;
+      const date = document.getElementById('session-date').value;
+      const instructor = document.getElementById('session-instructor').value.trim();
+      if (!topic_id || !date || !instructor) {
+        showAlert('dash-alert-slot', 'الرجاء تعبئة جميع الحقول', 'error');
+        return;
+      }
+      const { error } = await client.from('lecture_sessions').insert({ topic_id, date, instructor });
+      if (error) { showAlert('dash-alert-slot', error.message, 'error'); return; }
+      document.getElementById('session-date').value = '';
+      document.getElementById('session-instructor').value = '';
+      showAlert('dash-alert-slot', 'تم تسجيل المحاضرة', 'success');
+      await loadSessions();
+      if (currentProfile.role === 'superadmin') renderManagePanel();
+    });
+
+    // ---------- Add attendees ----------
+    document.getElementById('add-attendees-btn').addEventListener('click', async () => {
+      const session_id = document.getElementById('attendee-session').value;
+      const raw = document.getElementById('attendee-names').value;
+      const names = raw.split('\n').map(n => n.trim()).filter(Boolean);
+      if (!session_id || names.length === 0) {
+        showAlert('dash-alert-slot', 'الرجاء اختيار المحاضرة وإدخال اسم واحد على الأقل', 'error');
+        return;
+      }
+      const { error } = await client.from('attendees').insert(names.map(name => ({ session_id, name })));
+      if (error) { showAlert('dash-alert-slot', error.message, 'error'); return; }
+      document.getElementById('attendee-names').value = '';
+      showAlert('dash-alert-slot', `تمت إضافة ${names.length} من الحضور`, 'success');
+      if (currentProfile.role === 'superadmin') renderManagePanel();
+    });
+
+    // ---------- Manage panel (superadmin: delete) ----------
+    async function renderManagePanel() {
+      const { data: topics } = await client
+        .from('topics')
+        .select('id, name, lecture_sessions(id, date, instructor, attendees(id, name))')
+        .order('name');
+
+      const el = document.getElementById('manage-content');
+      if (!topics || topics.length === 0) {
+        el.innerHTML = '<div class="hint">لا توجد مواضيع بعد</div>';
+        return;
+      }
+
+      el.innerHTML = topics.map(t => `
+        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>${esc(t.name)}</span>
+          <button class="btn btn-danger btn-sm" data-del-topic="${t.id}">حذف الموضوع</button>
+        </div>
+        ${(t.lecture_sessions || []).length === 0 ? '<div class="hint">لا توجد محاضرات لهذا الموضوع</div>' :
+          `<div class="table-scroll"><table class="list-table">
+            <thead><tr><th>التاريخ</th><th>المحاضر</th><th>الحضور</th><th></th></tr></thead>
+            <tbody>
+              ${t.lecture_sessions.map(s => `
+                <tr>
+                  <td class="nums">${esc(s.date)}</td>
+                  <td>${esc(s.instructor)}</td>
+                  <td>
+                    ${(s.attendees || []).map(a => `<span class="chip" style="font-size:12px">${esc(a.name)} <button data-del-attendee="${a.id}" style="border:none;background:none;color:var(--danger);cursor:pointer">×</button></span>`).join(' ') || '<span class="hint">لا يوجد</span>'}
+                  </td>
+                  <td><button class="btn btn-danger btn-sm" data-del-session="${s.id}">حذف المحاضرة</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table></div>`}
+      `).join('');
+
+      el.querySelectorAll('[data-del-topic]').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('حذف هذا الموضوع سيحذف كل محاضراته وحضوره. متابعة؟')) return;
+        await client.from('topics').delete().eq('id', btn.dataset.delTopic);
+        await loadTopics(); await loadSessions(); await renderManagePanel();
+      }));
+      el.querySelectorAll('[data-del-session]').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('حذف هذه المحاضرة سيحذف حضورها. متابعة؟')) return;
+        await client.from('lecture_sessions').delete().eq('id', btn.dataset.delSession);
+        await loadSessions(); await renderManagePanel();
+      }));
+      el.querySelectorAll('[data-del-attendee]').forEach(btn => btn.addEventListener('click', async () => {
+        await client.from('attendees').delete().eq('id', btn.dataset.delAttendee);
+        await renderManagePanel();
+      }));
+    }
+
+    // ---------- Admins list (superadmin) ----------
+    async function loadAdmins() {
+      const { data } = await client.from('admin_profiles').select('username, role').order('username');
+      const tbody = document.querySelector('#admins-table tbody');
+      tbody.innerHTML = (data || []).map(a => `
+        <tr><td>${esc(a.username)}</td><td>${a.role === 'superadmin' ? 'مشرف عام' : 'مشرف'}</td><td></td></tr>
+      `).join('');
+    }
+
+    async function callEdgeFunction(body) {
+      const { data: { session } } = await client.auth.getSession();
+      const res = await fetch(window.EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'حدث خطأ');
+      return result;
+    }
+
+    document.getElementById('create-admin-btn').addEventListener('click', async () => {
+      const username = document.getElementById('new-admin-username').value.trim();
+      const password = document.getElementById('new-admin-password').value;
+      const role = document.getElementById('new-admin-role').value;
+      if (!username || !password) {
+        showAlert('dash-alert-slot', 'الرجاء تعبئة اسم المستخدم وكلمة المرور', 'error');
+        return;
+      }
+      try {
+        await callEdgeFunction({ action: 'create_admin', username, password, role });
+        showAlert('dash-alert-slot', 'تم إنشاء الحساب', 'success');
+        document.getElementById('new-admin-username').value = '';
+        document.getElementById('new-admin-password').value = '';
+        await loadAdmins();
+      } catch (e) {
+        showAlert('dash-alert-slot', e.message, 'error');
+      }
+    });
+
+    document.getElementById('reset-password-btn').addEventListener('click', async () => {
+      const username = document.getElementById('reset-username').value.trim();
+      const new_password = document.getElementById('reset-password').value;
+      if (!username || !new_password) {
+        showAlert('dash-alert-slot', 'الرجاء تعبئة اسم المستخدم وكلمة المرور الجديدة', 'error');
+        return;
+      }
+      try {
+        await callEdgeFunction({ action: 'reset_password', username, new_password });
+        showAlert('dash-alert-slot', 'تمت إعادة تعيين كلمة المرور', 'success');
+        document.getElementById('reset-username').value = '';
+        document.getElementById('reset-password').value = '';
+      } catch (e) {
+        showAlert('dash-alert-slot', e.message, 'error');
+      }
+    });
+
+    // ---------- Self password change ----------
+    document.getElementById('self-password-btn').addEventListener('click', async () => {
+      const password = document.getElementById('self-password').value;
+      if (!password || password.length < 8) {
+        showAlert('dash-alert-slot', 'كلمة المرور يجب أن تكون ٨ أحرف على الأقل', 'error');
+        return;
+      }
+      const { error } = await client.auth.updateUser({ password });
+      if (error) { showAlert('dash-alert-slot', error.message, 'error'); return; }
+      document.getElementById('self-password').value = '';
+      showAlert('dash-alert-slot', 'تم تحديث كلمة المرور', 'success');
+    });
+
+    init();
+  </script>
+</body>
+</html>
